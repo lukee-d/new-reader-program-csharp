@@ -1,0 +1,10 @@
+.vs/
+*.user
+*.suo
+*.VC.db
+*.pdb
+*.obj
+*.exe
+*.log
+bin/
+obj/

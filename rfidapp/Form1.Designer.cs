@@ -47,12 +47,13 @@
             this.labelEPC = new System.Windows.Forms.Label();
             this.labelStatus = new System.Windows.Forms.Label();
             this.trackBarPower = new System.Windows.Forms.TrackBar();
-            this.label3 = new System.Windows.Forms.Label();
             this.labelPower = new System.Windows.Forms.Label();
             this.buttonSetPower = new System.Windows.Forms.Button();
             this.textBoxEPCRead = new System.Windows.Forms.TextBox();
             this.buttonRead = new System.Windows.Forms.Button();
             this.buttonSaveLog = new System.Windows.Forms.Button();
+            this.buttonScan = new System.Windows.Forms.Button();
+            this.comboBoxDiscoveredIPs = new System.Windows.Forms.ComboBox();
             this.groupBoxModes.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.trackBarPower)).BeginInit();
             this.SuspendLayout();
@@ -214,7 +215,6 @@
             this.labelStatus.Size = new System.Drawing.Size(90, 16);
             this.labelStatus.TabIndex = 17;
             this.labelStatus.Text = "Disconnected";
-            this.labelStatus.Click += new System.EventHandler(this.labelStatus_Click);
             // 
             // trackBarPower
             // 
@@ -227,15 +227,6 @@
             this.trackBarPower.Value = 15;
             this.trackBarPower.Scroll += new System.EventHandler(this.trackBarPower_Scroll);
             // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(0, 0);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(44, 16);
-            this.label3.TabIndex = 19;
-            this.label3.Text = "label3";
-            // 
             // labelPower
             // 
             this.labelPower.AutoSize = true;
@@ -244,7 +235,6 @@
             this.labelPower.Size = new System.Drawing.Size(96, 16);
             this.labelPower.TabIndex = 20;
             this.labelPower.Text = "Power: 15 dBm";
-            this.labelPower.Click += new System.EventHandler(this.labelPower_Click);
             // 
             // buttonSetPower
             // 
@@ -264,7 +254,6 @@
             this.textBoxEPCRead.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.textBoxEPCRead.Size = new System.Drawing.Size(140, 97);
             this.textBoxEPCRead.TabIndex = 22;
-            this.textBoxEPCRead.TextChanged += new System.EventHandler(this.textBoxEPCRead_TextChanged);
             // 
             // buttonRead
             // 
@@ -286,17 +275,37 @@
             this.buttonSaveLog.UseVisualStyleBackColor = true;
             this.buttonSaveLog.Click += new System.EventHandler(this.buttonSaveLog_Click);
             // 
+            // buttonScan
+            // 
+            this.buttonScan.Location = new System.Drawing.Point(400, 374);
+            this.buttonScan.Name = "buttonScan";
+            this.buttonScan.Size = new System.Drawing.Size(165, 23);
+            this.buttonScan.TabIndex = 25;
+            this.buttonScan.Text = "Scan for Readers";
+            this.buttonScan.UseVisualStyleBackColor = true;
+            this.buttonScan.Click += new System.EventHandler(this.buttonScan_Click);
+            // 
+            // comboBoxDiscoveredIPs
+            // 
+            this.comboBoxDiscoveredIPs.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBoxDiscoveredIPs.FormattingEnabled = true;
+            this.comboBoxDiscoveredIPs.Location = new System.Drawing.Point(594, 372);
+            this.comboBoxDiscoveredIPs.Name = "comboBoxDiscoveredIPs";
+            this.comboBoxDiscoveredIPs.Size = new System.Drawing.Size(121, 24);
+            this.comboBoxDiscoveredIPs.TabIndex = 26;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(831, 450);
+            this.Controls.Add(this.comboBoxDiscoveredIPs);
+            this.Controls.Add(this.buttonScan);
             this.Controls.Add(this.buttonSaveLog);
             this.Controls.Add(this.buttonRead);
             this.Controls.Add(this.textBoxEPCRead);
             this.Controls.Add(this.buttonSetPower);
             this.Controls.Add(this.labelPower);
-            this.Controls.Add(this.label3);
             this.Controls.Add(this.trackBarPower);
             this.Controls.Add(this.labelStatus);
             this.Controls.Add(this.labelEPC);
@@ -341,12 +350,13 @@
         private System.Windows.Forms.Label labelEPC;
         private System.Windows.Forms.Label labelStatus;
         private System.Windows.Forms.TrackBar trackBarPower;
-        private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label labelPower;
         private System.Windows.Forms.Button buttonSetPower;
         private System.Windows.Forms.TextBox textBoxEPCRead;
         private System.Windows.Forms.Button buttonRead;
         private System.Windows.Forms.Button buttonSaveLog;
+        private System.Windows.Forms.Button buttonScan;
+        private System.Windows.Forms.ComboBox comboBoxDiscoveredIPs;
     }
 }
 

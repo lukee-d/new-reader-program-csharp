@@ -3,8 +3,12 @@ using System;
 using System.Drawing;
 using System.Drawing.Text;
 using System.Linq;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
@@ -39,7 +43,7 @@ namespace rfidapp
             SetupUI();
         }
 
-        private async void SetupUI()
+        private void SetupUI()
         {
             // Connection settings
             textBoxIP.Text = "192.168.1.178";
@@ -190,7 +194,7 @@ namespace rfidapp
             UpdateUI();
 
             // Additional verification
-            
+
         }
 
         private void TagDetectionCallback(int msg, int param1, byte[] param2, int param3, byte[] param4)
@@ -449,11 +453,7 @@ namespace rfidapp
         }
         #endregion
 
-        private void labelStatus_Click(object sender, EventArgs e)
-        {
-
-        }
-
+        #region RF Power
         private void buttonSetPower_Click(object sender, EventArgs e)
         {
             if (!_isConnected)
@@ -478,16 +478,54 @@ namespace rfidapp
             labelPower.Text = $"Power: {trackBarPower.Value} dBm";
         }
 
-        private void labelPower_Click(object sender, EventArgs e)
+        private void InitializePowerLevel()
         {
+            if (!_isConnected) return;
+            try
+            {
+                string currentPower = getCurrentPowerLevel().TrimStart('0');
 
+                this.Invoke((MethodInvoker)delegate
+                {
+                    trackBarPower.Value = int.Parse(currentPower);
+                    labelPower.Text = $"Power: {currentPower} dBm";
+                });
+            }
+            catch
+            {
+                trackBarPower.Value = 15;
+                labelPower.Text = "Power: 15 dBm";
+            }
         }
 
-        private void textBoxEPCRead_TextChanged(object sender, EventArgs e)
+        private string getCurrentPowerLevel()
         {
+            byte bParamAddr = 0;
+            byte[] bValue = new byte[2];
+
+            /*  01: Transport
+                02: WorkMode
+                03: DeviceAddr
+                04: FilterTime
+                05: RFPower
+                06: BeepEnable
+                07: UartBaudRate*/
+            bParamAddr = 0x05;
+
+            if (RFID.SWNetApi.SWNet_ReadDeviceOneParam(0xFF, bParamAddr, bValue) == false)
+            {
+                AppendToOutput("Failed");
+                return "";
+            }
+            string str1 = "";
+            str1 = bValue[0].ToString("d2");
+
+            return (str1);
 
         }
+        #endregion
 
+        #region temp Single Read
         private void buttonRead_Click(object sender, EventArgs e)
         {
             if (!_isConnected)
@@ -551,6 +589,9 @@ namespace rfidapp
                 }
             }
         }
+        #endregion
+
+        #region Save Log
         private void buttonSaveLog_Click(object sender, EventArgs e)
         {
             using (SaveFileDialog saveFileDialog = new SaveFileDialog())
@@ -574,7 +615,9 @@ namespace rfidapp
                 }
             }
         }
+        #endregion
 
+        #region Delay Method
         private async Task<bool> ExecuteWithRetry(Func<bool> command, int retries = 2, int delayMs = 200)
         {
             for (int attempt = 1; attempt <= retries; attempt++)
@@ -588,51 +631,94 @@ namespace rfidapp
             }
             return false;
         }
+        #endregion
 
-        private void InitializePowerLevel()
+        #region Discover IP
+        private async void buttonScan_Click(object sender, EventArgs e)
         {
-            if (!_isConnected) return;
+            buttonScan.Enabled = false;
+            buttonScan.Text = "Scanning...";
+            comboBoxDiscoveredIPs.Items.Clear();
+
+            AppendToOutput("Scanning network for RFID readers...\r\n");
+
             try
             {
-                string currentPower = getCurrentPowerLevel().TrimStart('0');
-                
-                this.Invoke((MethodInvoker)delegate
+                string localIP = GetLocalIPAddress();
+                string subnet = localIP.Substring(0, localIP.LastIndexOf('.') + 1);
+
+                // Scan first 20 IPs (adjust range as needed)
+                for (int i = 1; i <= 255; i++)
                 {
-                    trackBarPower.Value = int.Parse(currentPower);
-                    labelPower.Text = $"Power: {currentPower} dBm";
-                });
+                    string testIP = $"{subnet}{i}";
+                    if (await CheckRFIDPort(testIP, 60000))
+                    {
+                        comboBoxDiscoveredIPs.Items.Add(testIP);
+                        AppendToOutput($"Found device at {testIP}\r\n");
+                    }
+                }
+
+                if (comboBoxDiscoveredIPs.Items.Count > 0)
+                {
+                    comboBoxDiscoveredIPs.SelectedIndex = 0;
+                    textBoxIP.Text = comboBoxDiscoveredIPs.SelectedItem.ToString();
+                }
+                else
+                {
+                    AppendToOutput("No RFID readers found\r\n");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendToOutput($"Scan error: {ex.Message}\r\n");
+            }
+            finally
+            {
+                buttonScan.Enabled = true;
+                buttonScan.Text = "Scan for Readers";
+            }
+        }
+        private async Task<bool> CheckRFIDPort(string ip, int port)
+        {
+            try
+            {
+                using (var tcpClient = new TcpClient())
+                {
+                    var connectTask = tcpClient.ConnectAsync(ip, port);
+                    if (await Task.WhenAny(connectTask, Task.Delay(100)) == connectTask)
+                    {
+                        return tcpClient.Connected;
+                    }
+                    return false;
+                }
             }
             catch
             {
-                trackBarPower.Value = 15;
-                labelPower.Text = "Power: 15 dBm";
+                return false;
             }
         }
 
-        private string getCurrentPowerLevel()
+        private string GetLocalIPAddress()
         {
-            byte bParamAddr = 0;
-            byte[] bValue = new byte[2];
-
-            /*  01: Transport
-                02: WorkMode
-                03: DeviceAddr
-                04: FilterTime
-                05: RFPower
-                06: BeepEnable
-                07: UartBaudRate*/
-            bParamAddr = 0x05;
-
-            if (RFID.SWNetApi.SWNet_ReadDeviceOneParam(0xFF, bParamAddr, bValue) == false)
+            var host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (var ip in host.AddressList)
             {
-                AppendToOutput("Failed");
-                return "";
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    return ip.ToString();
+                }
             }
-            string str1 = "";
-            str1 = bValue[0].ToString("d2");
-
-            return(str1);
-
+            return "192.168.1.178"; // Default fallback
         }
+
+        // Add this to auto-fill IP when selection changes
+        private void comboDiscoveredIPs_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBoxDiscoveredIPs.SelectedItem != null)
+            {
+                textBoxIP.Text = comboBoxDiscoveredIPs.SelectedItem.ToString();
+            }
+        }
+        #endregion
     }
 }

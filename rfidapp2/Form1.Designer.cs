@@ -47,6 +47,7 @@
             // textBoxNewEPC
             // 
             this.textBoxNewEPC.Location = new System.Drawing.Point(252, 90);
+            this.textBoxNewEPC.MaxLength = 9;
             this.textBoxNewEPC.Name = "textBoxNewEPC";
             this.textBoxNewEPC.Size = new System.Drawing.Size(226, 22);
             this.textBoxNewEPC.TabIndex = 1;

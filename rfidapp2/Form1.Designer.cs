@@ -65,7 +65,7 @@
             // labelConnectionStatus
             // 
             this.labelConnectionStatus.ForeColor = System.Drawing.Color.DimGray;
-            this.labelConnectionStatus.Location = new System.Drawing.Point(514, 50);
+            this.labelConnectionStatus.Location = new System.Drawing.Point(22, 192);
             this.labelConnectionStatus.Name = "labelConnectionStatus";
             this.labelConnectionStatus.Size = new System.Drawing.Size(168, 23);
             this.labelConnectionStatus.TabIndex = 4;
@@ -74,7 +74,7 @@
             // 
             // buttonReconnect
             // 
-            this.buttonReconnect.Location = new System.Drawing.Point(549, 89);
+            this.buttonReconnect.Location = new System.Drawing.Point(57, 218);
             this.buttonReconnect.Name = "buttonReconnect";
             this.buttonReconnect.Size = new System.Drawing.Size(94, 23);
             this.buttonReconnect.TabIndex = 5;
@@ -84,7 +84,7 @@
             // 
             // Form1
             // 
-            this.ClientSize = new System.Drawing.Size(748, 404);
+            this.ClientSize = new System.Drawing.Size(732, 253);
             this.Controls.Add(this.buttonReconnect);
             this.Controls.Add(this.labelConnectionStatus);
             this.Controls.Add(this.labelMatchStatus);

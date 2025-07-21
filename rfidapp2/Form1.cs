@@ -1,5 +1,6 @@
 ﻿using RFID;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Net;
@@ -16,13 +17,16 @@ namespace rfidapp2
         private const byte DEVICE_ADDRESS = 0xFF;
         private const byte EPC_BANK = 0x01;
         private const byte PASSWORD_LENGTH = 4;
+        private const byte PARAM_ADDRESS_POWER = 0x05;
+        private const int DEFAULT_POWER = 6;
 
         private string _lastWrittenEPC = "";
         private bool _isConnected = false;
         private bool _isDiscovering = false;
         private string _readerIP = "";
-        private bool _disposed = false; // Track form disposal
+        private bool _disposed = false; 
         private bool _isWriting = false;
+        private bool _multipleTags = false;
 
         private RFID.SWNetApi.callBackHandler _callbackHandler;
 
@@ -33,10 +37,15 @@ namespace rfidapp2
         private bool _expectingNewTag = false;
         private string _writtenEPC = "";
 
+        private readonly Dictionary<string, DateTime> _recentTagTimestamps = new Dictionary<string, DateTime>();
+        private readonly TimeSpan _tagTimeout = TimeSpan.FromMilliseconds(1000);
+
+
         #region Setup
         public Form1()
         {
             InitializeComponent();
+            _callbackHandler = new RFID.SWNetApi.callBackHandler(TagDetectionCallback);
             SetupUI();
 
             this.Load += (s, e) =>
@@ -47,14 +56,13 @@ namespace rfidapp2
                     dueTime: 100,
                     period: 100);
             };
-
             StartRFIDProcess();
         }
 
         private void SetupUI()
         {
             this.Text = "Simple RFID App";
-            this.Size = new Size(800, 300);
+            this.Size = new Size(750, 300);
 
             labelLastEPC.Text = "Current EPC: [No Tag]";
             UpdateMatchStatus(null);
@@ -76,7 +84,7 @@ namespace rfidapp2
             }
             else
             {
-                MessageBox.Show("No RFID reader found on network");
+                MessageBox.Show("No RFID reader found on network. Please Reconnect.");
             }
         }
         #endregion
@@ -86,48 +94,26 @@ namespace rfidapp2
         {
             if (_isConnected) return true;
 
-            _callbackHandler = new RFID.SWNetApi.callBackHandler(TagDetectionCallback);
+            if (_callbackHandler == null)
+                _callbackHandler = new RFID.SWNetApi.callBackHandler(TagDetectionCallback);
 
             if (RFID.SWNetApi.SWNet_OpenDevice(_readerIP, 60000))
             {
                 _isConnected = true;
                 UpdateConnectionStatus(connected: true);
 
-                // Set to Answer mode
                 RFID.SWNetApi.SWNet_SetDeviceOneParam(DEVICE_ADDRESS, 0x02, 0x01);
+                RFID.SWNetApi.SWNet_SetCallback(_callbackHandler);
 
-                // Set callback
-                RFID.SWNetApi.SWNet_SetCallback(TagDetectionCallback);
+                //set rf power to 6/default
+                bool success = RFID.SWNetApi.SWNet_SetDeviceOneParam(
+                DEVICE_ADDRESS,
+                PARAM_ADDRESS_POWER,
+                DEFAULT_POWER);
 
                 return true;
             }
-
             return false;
-        }
-
-        private void UpdateConnectionStatus(bool connected = false, bool discovering = false)
-        {
-            _isConnected = connected;
-            _isDiscovering = discovering;
-
-            if (!connected)
-            {
-                if (discovering)
-                {
-                    labelConnectionStatus.Text = "Scanning for nearby readers...";
-                    labelConnectionStatus.ForeColor = Color.SteelBlue;
-                }
-                else
-                {
-                    labelConnectionStatus.Text = "Could not find reader";
-                    labelConnectionStatus.ForeColor = Color.Red;
-                }
-            }
-            else
-            {
-                labelConnectionStatus.Text = "Connected";
-                labelConnectionStatus.ForeColor = Color.Green;
-            }
         }
 
         private void buttonReconnect_Click(object sender, EventArgs e)
@@ -135,7 +121,6 @@ namespace rfidapp2
             if (_isDiscovering || _isWriting) return;
 
             StartRFIDProcess();
-
         }
 
         #endregion
@@ -217,72 +202,120 @@ namespace rfidapp2
 
         private void TagDetectionCallback(int msg, int param1, byte[] param2, int param3, byte[] param4)
         {
-            if (_disposed || _isWriting || param2 == null) return; // Skip if form is disposed
-            if (msg == 2) // Tag detection
+            if (_disposed || _isWriting || param2 == null || this.IsDisposed) return;
+
+            if (msg == 2) 
             {
                 _lastTagDetectionTime = DateTime.Now;
 
                 int position = 0;
-                if (param3 > 3)
+                if (param3 > 3 && this.IsHandleCreated)
                 {
                     byte packLength = param2[position];
                     byte tagType = param2[position + 1];
                     int idLength = (tagType & 0x80) == 0x80 ? packLength - 7 : packLength - 1;
 
-                    // Extract EPC (more accurate)
                     StringBuilder epc = new StringBuilder();
+
                     for (int j = 0; j < idLength; j++)
                     {
                         epc.Append(param2[position + 3 + j].ToString("X2"));
                     }
 
                     string currentEPC = epc.ToString().Substring(0, 24);
+                    DateTime now = DateTime.Now;
 
-                    try
+                    lock (_recentTagTimestamps)
                     {
-                        if (!_disposed && this.IsHandleCreated)
+                        _recentTagTimestamps[currentEPC] = now;
+
+                        // Remove expired tags
+                        var expiredKeys = _recentTagTimestamps
+                            .Where(kv => (now - kv.Value) > _tagTimeout)
+                            .Select(kv => kv.Key)
+                            .ToList();
+
+                        foreach (var key in expiredKeys)
                         {
-                            this.Invoke((MethodInvoker)delegate
-                            {
-                                if (!_disposed && !_isWriting)
-                                {
-                                    if (_expectingNewTag)
-                                    {
-                                        
-                                        string labelEPC = labelLastEPC.Text.Replace("Current EPC: ", "");
-
-
-                                        if (currentEPC == _writtenEPC || 
-                                        currentEPC == labelEPC)
-                                        {;
-                                            labelLastEPC.Text = "Current EPC: " + currentEPC;
-                                            UpdateMatchStatus(currentEPC);
-
-                                            textBoxNewEPC.Enabled = true;
-                                            textBoxNewEPC.BackColor = SystemColors.Window;
-                                            textBoxNewEPC.Focus();
-                                            _expectingNewTag = false;
-                                        }
-                                        return;
-                                    }
-
-                                    labelLastEPC.Text = "Current EPC: " + currentEPC;
-                                    UpdateMatchStatus(currentEPC);
-                                    textBoxNewEPC.Enabled = true;
-                                    textBoxNewEPC.BackColor = SystemColors.Window;
-                                    textBoxNewEPC.Focus();
-                                }
-                            });
+                            _recentTagTimestamps.Remove(key);
                         }
+
+                        _multipleTags = _recentTagTimestamps.Count >= 2;
                     }
-                    catch (ObjectDisposedException)
+
+                    this.Invoke((MethodInvoker)delegate
                     {
-                        // Form is disposed, ignore
+                        if (_disposed || _isWriting || !this.IsHandleCreated) return;
+
+                        if (_multipleTags)
+                        {
+                            labelLastEPC.Text = "Current EPC: " + currentEPC;
+                            UpdateMatchStatus("MULTIPLE TAGS");
+                            textBoxNewEPC.Text = "";
+                            textBoxNewEPC.Enabled = false;
+                            textBoxNewEPC.BackColor = SystemColors.Window;
+                            return;
+                        }
+
+                        if (_expectingNewTag)
+                        {
+                            string labelEPC = labelLastEPC.Text.Replace("Current EPC: ", "");
+                            if (currentEPC == _writtenEPC || currentEPC == labelEPC)
+                            {
+                                HandleSuccessfulWrite(currentEPC);
+                            }
+                            return;
+                        }
+
+                        labelLastEPC.Text = "Current EPC: " + currentEPC;
+                        UpdateMatchStatus(currentEPC);
+                        textBoxNewEPC.Enabled = true;
+                    });
+                }
+            }
+        }
+        private void TagPresenceCheck(object state)
+        {
+            if (_disposed || _isWriting || _expectingNewTag) return;
+
+            try
+            {
+                bool tagsPresent;
+                lock (_recentTagTimestamps)
+                {
+                    tagsPresent = _recentTagTimestamps.Any(kv =>
+                        (DateTime.Now - kv.Value) <= _tagTimeout);
+                }
+
+                if (!tagsPresent && (DateTime.Now - _lastTagDetectionTime).TotalMilliseconds > TAG_TIMEOUT_MS)
+                {
+                    // Safe UI update with disposal check
+                    if (!_disposed && this.IsHandleCreated)
+                    {
+                        this.BeginInvoke((MethodInvoker)delegate
+                        {
+                            // Double-check disposal status
+                            if (!_disposed && !_isWriting && !_expectingNewTag)
+                            {
+                                labelLastEPC.Text = "Current EPC: [No Tag]";
+                                UpdateMatchStatus(null);
+                                textBoxNewEPC.Text = "";
+                                textBoxNewEPC.Enabled = false;
+                            }
+                        });
                     }
                 }
             }
-        
+            catch (ObjectDisposedException)
+            {
+                // Silently ignore - form is closing
+            }
+            catch (InvalidOperationException)
+            {
+                // Handle might not be created yet
+            }
         }
+
         #endregion
 
         #region Writing
@@ -290,7 +323,6 @@ namespace rfidapp2
         {
             if (_isWriting || !textBoxNewEPC.Enabled) return;
 
-            // Filter to hex characters only
             int pos = textBoxNewEPC.SelectionStart;
             string newText = Regex.Replace(textBoxNewEPC.Text.ToUpper(), "[^0-9A-F]", "");
 
@@ -305,17 +337,12 @@ namespace rfidapp2
                 textBoxNewEPC.SelectionStart = Math.Min(pos, newText.Length);
             }
 
-            // Auto-write when 9+ characters entered
             if (textBoxNewEPC.Text.Length == 9)
             {
                 _isWriting = true;
                 string epcToWrite = (textBoxNewEPC.Text.PadRight(24, '0').Substring(0, 24));
-                
                 textBoxNewEPC.Focus();
-                
-
                 WriteEPC(epcToWrite);
-
             }
         }
 
@@ -367,25 +394,38 @@ namespace rfidapp2
                 _isWriting = false;
             }
         }
+        private void HandleSuccessfulWrite(string currentEPC)
+        {
+            labelLastEPC.Text = "Current EPC: " + currentEPC;
+            UpdateMatchStatus(currentEPC);
+            textBoxNewEPC.Enabled = true;
+            _expectingNewTag = false;
+        }
+
         #endregion
 
-        #region Update Status
+        #region Update UI
         private void UpdateMatchStatus(string currentEPC)
         {
-            if (string.IsNullOrEmpty(_lastWrittenEPC))
+            if (string.IsNullOrEmpty(_lastWrittenEPC) && !_multipleTags)
             {
                 labelMatchStatus.Text = "NO MATCH";
                 labelMatchStatus.ForeColor = Color.Gray;
             }
-            else if (currentEPC == _lastWrittenEPC)
+            else if (!string.IsNullOrEmpty(currentEPC) && currentEPC == _lastWrittenEPC && !_multipleTags)
             {
                 labelMatchStatus.Text = "MATCH";
                 labelMatchStatus.ForeColor = Color.Green;
             }
-            else if (!string.IsNullOrEmpty(currentEPC))
+            else if (!string.IsNullOrEmpty(currentEPC) && !_multipleTags)
             {
                 labelMatchStatus.Text = "MISMATCH";
                 labelMatchStatus.ForeColor = Color.Red;
+            }
+            else if (currentEPC == "MULTIPLE TAGS")
+            {
+                labelMatchStatus.Text = "MULTIPLE TAGS";
+                labelMatchStatus.ForeColor = Color.Orange;
             }
             else
             {
@@ -393,37 +433,28 @@ namespace rfidapp2
                 labelMatchStatus.ForeColor = Color.Gray;
             }
         }
-
-        private void TagPresenceCheck(object state)
+        private void UpdateConnectionStatus(bool connected = false, bool discovering = false)
         {
-            if (_isWriting || _expectingNewTag) return;
+            _isConnected = connected;
+            _isDiscovering = discovering;
 
-            if ((DateTime.Now - _lastTagDetectionTime).TotalMilliseconds > TAG_TIMEOUT_MS)
+            if (!connected)
             {
-                try
+                if (discovering)
                 {
-                    if (!_disposed && this.IsHandleCreated)
-                    {
-                        this.BeginInvoke((MethodInvoker)delegate
-                        {
-                            if (!_disposed && !_isWriting && !_expectingNewTag)
-                            {
-                                labelLastEPC.Text = "Current EPC: [No Tag]";
-                                UpdateMatchStatus(null);
-
-                                textBoxNewEPC.Text = "";
-                                textBoxNewEPC.Enabled = false;
-                                textBoxNewEPC.BackColor = SystemColors.Control;
-
-                            }
-                        });
-                    }
+                    labelConnectionStatus.Text = "Scanning for nearby readers...";
+                    labelConnectionStatus.ForeColor = Color.SteelBlue;
                 }
-                catch (InvalidOperationException)
+                else
                 {
-
+                    labelConnectionStatus.Text = "Could not find reader";
+                    labelConnectionStatus.ForeColor = Color.Red;
                 }
-
+            }
+            else
+            {
+                labelConnectionStatus.Text = "Connected to: " + _readerIP;
+                labelConnectionStatus.ForeColor = Color.Green;
             }
         }
         #endregion
@@ -437,7 +468,6 @@ namespace rfidapp2
                 if (attempt < retries) await Task.Delay(delayMs);
 
             }
-
             return false;
         }
 
@@ -456,46 +486,37 @@ namespace rfidapp2
         #endregion
 
         #region Cleanup
-        protected override void OnFormClosed(FormClosedEventArgs e)
+        protected override void OnFormClosing(FormClosingEventArgs e)
         {
             _disposed = true;
+
             var timer = _tagPresenceTimer;
             _tagPresenceTimer = null;
             timer?.Dispose();
 
-            try
+            if (_isConnected)
             {
-                if (_isConnected)
-                {
+                RFID.SWNetApi.SWNet_SetCallback(null);
 
-                    CleanupRFID();
-                }
-            }
-            catch
-            {
+                Task.Delay(100).Wait();
 
+                RFID.SWNetApi.SWNet_StopRead(DEVICE_ADDRESS);
             }
 
-
-            base.OnFormClosed(e);
-        }
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            _disposed = true; // Mark as disposed
-            CleanupRFID();
             base.OnFormClosing(e);
         }
 
-        private void CleanupRFID()
+        protected override void OnFormClosed(FormClosedEventArgs e)
         {
             if (_isConnected)
             {
-                RFID.SWNetApi.SWNet_StopRead(DEVICE_ADDRESS);
                 RFID.SWNetApi.SWNet_CloseDevice();
                 _isConnected = false;
             }
+            base.OnFormClosed(e);
         }
-        #endregion
         
+        
+        #endregion
     }
 }

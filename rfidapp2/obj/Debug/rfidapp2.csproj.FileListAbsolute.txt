@@ -10,3 +10,4 @@ C:\Users\Joseph Scarlett\source\repos\rfidapp2\rfidapp2\obj\Debug\rfidapp2.cspro
 C:\Users\Joseph Scarlett\source\repos\rfidapp2\rfidapp2\obj\Debug\rfidapp.exe
 C:\Users\Joseph Scarlett\source\repos\rfidapp2\rfidapp2\obj\Debug\rfidapp.pdb
 C:\Users\Joseph Scarlett\source\repos\rfidapp2\rfidapp2\obj\Debug\rfidapp2.Form1.resources
+C:\Users\Joseph Scarlett\source\repos\rfidapp2\rfidapp2\bin\Debug\gti-logo.png

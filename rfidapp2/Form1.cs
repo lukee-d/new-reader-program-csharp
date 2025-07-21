@@ -61,7 +61,7 @@ namespace rfidapp2
 
         private void SetupUI()
         {
-            this.Text = "Simple RFID App";
+            this.Text = "NRU Assignation Utility";
             this.Size = new Size(750, 300);
 
             labelLastEPC.Text = "Current EPC: [No Tag]";
@@ -425,7 +425,7 @@ namespace rfidapp2
             else if (currentEPC == "MULTIPLE TAGS")
             {
                 labelMatchStatus.Text = "MULTIPLE TAGS";
-                labelMatchStatus.ForeColor = Color.Orange;
+                labelMatchStatus.ForeColor = Color.Red;
             }
             else
             {

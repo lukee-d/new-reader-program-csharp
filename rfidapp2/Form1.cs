@@ -18,7 +18,9 @@ namespace rfidapp2
         private const byte EPC_BANK = 0x01;
         private const byte PASSWORD_LENGTH = 4;
         private const byte PARAM_ADDRESS_POWER = 0x05;
+        private const byte PARAM_ADDRESS_TRANSPORT = 0x01;
         private const int DEFAULT_POWER = 6;
+        private const int DEFAULT_TRANSPORT = 2; //RJ45
 
         private string _lastWrittenEPC = "";
         private bool _isConnected = false;
@@ -110,6 +112,11 @@ namespace rfidapp2
                 DEVICE_ADDRESS,
                 PARAM_ADDRESS_POWER,
                 DEFAULT_POWER);
+
+                RFID.SWNetApi.SWNet_SetDeviceOneParam(
+                DEVICE_ADDRESS,
+                PARAM_ADDRESS_TRANSPORT,
+                DEFAULT_TRANSPORT);
 
                 return true;
             }

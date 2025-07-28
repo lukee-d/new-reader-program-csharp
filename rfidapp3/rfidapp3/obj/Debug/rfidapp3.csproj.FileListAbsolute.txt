@@ -1,0 +1,12 @@
+C:\Users\Joseph Scarlett\source\repos\rfidapp3\rfidapp3\obj\Debug\rfidapp3.csproj.AssemblyReference.cache
+C:\Users\Joseph Scarlett\source\repos\rfidapp3\rfidapp3\obj\Debug\rfidapp3.Properties.Resources.resources
+C:\Users\Joseph Scarlett\source\repos\rfidapp3\rfidapp3\obj\Debug\rfidapp3.csproj.GenerateResource.cache
+C:\Users\Joseph Scarlett\source\repos\rfidapp3\rfidapp3\obj\Debug\rfidapp3.csproj.CoreCompileInputs.cache
+C:\Users\Joseph Scarlett\source\repos\rfidapp3\rfidapp3\obj\Debug\rfidapp3.Form1.resources
+C:\Users\Joseph Scarlett\source\repos\rfidapp3\rfidapp3\bin\Debug\SWNetApi.dll
+C:\Users\Joseph Scarlett\source\repos\rfidapp3\rfidapp3\bin\Debug\rfidapp3.exe.config
+C:\Users\Joseph Scarlett\source\repos\rfidapp3\rfidapp3\bin\Debug\rfidapp3.exe
+C:\Users\Joseph Scarlett\source\repos\rfidapp3\rfidapp3\bin\Debug\rfidapp3.pdb
+C:\Users\Joseph Scarlett\source\repos\rfidapp3\rfidapp3\obj\Debug\rfidapp3.exe
+C:\Users\Joseph Scarlett\source\repos\rfidapp3\rfidapp3\obj\Debug\rfidapp3.pdb
+C:\Users\Joseph Scarlett\source\repos\rfidapp3\rfidapp3\obj\Debug\rfidapp3.exe.config
